@@ -1,0 +1,44 @@
+/*
+ * levimelting.c
+ *
+ * Created: 09.02.2016 23:31:09
+ * Author: Falcon
+ */
+
+#include <io.h>
+#include <delay.h>
+
+#define LED PORTB.5
+
+char portbuf;
+
+// Timer 0 overflow interrupt service routine
+interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
+PORTD = 0; //оба выхода в нижний уровень
+//вставить тут одиночные действия, если нужен перерыв. каждое действие добавляет примерно 100-120нс, без них перерыв 180-200нс
+PORTD = ~portbuf; //меняем состояние выводовна противоположное тому, что было
+TCNT0 = 0xFE; // Reinitialize Timer 0 value
+portbuf = PORTD;  //запоминаем новое состояние буфера
+}
+
+void main(void){
+  PORTD=0;
+  DDRD.2=DDRD.3=1;
+  PORTD=0;  
+  
+  // Timer/Counter 0 initialization. Остальные регистры остаются по умолчанию - нулевые.
+  TCCR0B=(1<<CS00);
+  TCNT0=0xFE; 
+    
+  PORTD.2=1; //первоначальное состояние
+  portbuf = PORTD; //вносим состояние порта в буфер
+  
+  //Настройка прерывания по таймеру
+  TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
+
+  // Global enable interrupts
+  #asm("sei")
+  
+  while (1);
+
+}
