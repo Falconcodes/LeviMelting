@@ -12,13 +12,16 @@
 
 char portbuf;
 
+
 // Timer 0 overflow interrupt service routine
 interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
+
+TCNT0 = 0xEE; // Reinitialize Timer 0 value
+
 PORTD = 0; //оба выхода в нижний уровень
-//вставить тут одиночные действия, если нужен перерыв. каждое действие добавляет примерно 100-120нс, без них перерыв 180-200нс
 PORTD = ~portbuf; //меняем состояние выводовна противоположное тому, что было
-TCNT0 = 0xFE; // Reinitialize Timer 0 value
 portbuf = PORTD;  //запоминаем новое состояние буфера
+
 }
 
 void main(void){
@@ -39,6 +42,6 @@ void main(void){
   // Global enable interrupts
   #asm("sei")
   
-  while (1);
+  while (1){};
 
 }

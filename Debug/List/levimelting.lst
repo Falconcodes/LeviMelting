@@ -1,8 +1,7 @@
 
-AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Debug\List\levimelting.asm Thu Feb 11 00:06:04 2016
+AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Debug\List\levimelting.asm Fri Feb 12 00:40:57 2016
 
-D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r3 already defined by the .DEF directive
-D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1091): warning: Register r4 already defined by the .DEF directive
+D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r4 already defined by the .DEF directive
                  
                  
                  ;CodeVisionAVR C Compiler V3.12 Advanced
@@ -1093,8 +1092,7 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1091): warning: Register r4 alr
                  	.ENDM
                  
                  ;NAME DEFINITIONS FOR GLOBAL VARIABLES ALLOCATED TO REGISTERS
-                 	.DEF _portbuf=R3
-                 	.DEF _portbuf_msb=R4
+                 	.DEF _portbuf=R4
                  
                  ;GPIOR0 INITIALIZATION VALUE
                  	.EQU __GPIOR0_INIT=0x00
@@ -1177,7 +1175,7 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1091): warning: Register r4 alr
 00004d e0c0      	LDI  R28,LOW(__SRAM_START+__DSTACK_SIZE)
 00004e e0d3      	LDI  R29,HIGH(__SRAM_START+__DSTACK_SIZE)
                  
-00004f 940c 0061 	JMP  _main
+00004f 940c 0060 	JMP  _main
                  
                  	.ESEG
                  	.ORG 0
@@ -1209,11 +1207,12 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1091): warning: Register r4 alr
                  ;
                  ;#define LED PORTB.5
                  ;
-                 ;int portbuf;
+                 ;char portbuf;
+                 ;
                  ;
                  ;// Timer 0 overflow interrupt service routine
                  ;interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
-                 ; 0000 0010 interrupt [17] void timer0_ovf_isr(void) {
+                 ; 0000 0011 interrupt [17] void timer0_ovf_isr(void) {
                  
                  	.CSEG
                  _timer0_ovf_isr:
@@ -1221,71 +1220,70 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1091): warning: Register r4 alr
 000051 93ea      	ST   -Y,R30
 000052 b7ef      	IN   R30,SREG
 000053 93ea      	ST   -Y,R30
-                 ; 0000 0011 PORTD = 0; //оба выхода в нижний уровень
-000054 e0e0      	LDI  R30,LOW(0)
-000055 b9eb      	OUT  0xB,R30
-                 ; 0000 0012 //вставить тут одиночные действия, если нужен перерыв. каждое действие добавляет примерно 100-120нс, без них перерыв 180 ...
-                 ; 0000 0013 PORTD = ~portbuf; //меняем состояние выводовна противоположное тому, что было
-000056 2de3      	MOV  R30,R3
-000057 95e0      	COM  R30
-000058 b9eb      	OUT  0xB,R30
-                 ; 0000 0014 TCNT0 = 0xFE; // Reinitialize Timer 0 value
-000059 efee      	LDI  R30,LOW(254)
-00005a bde6      	OUT  0x26,R30
-                 ; 0000 0015 portbuf = PORTD;  //запоминаем новое состояние буфера
-00005b b03b      	IN   R3,11
-00005c 2444      	CLR  R4
-                 ; 0000 0016 }
-00005d 91e9      	LD   R30,Y+
-00005e bfef      	OUT  SREG,R30
-00005f 91e9      	LD   R30,Y+
-000060 9518      	RETI
+                 ; 0000 0012 
+                 ; 0000 0013 TCNT0 = 0xEE; // Reinitialize Timer 0 value
+000054 eeee      	LDI  R30,LOW(238)
+000055 bde6      	OUT  0x26,R30
+                 ; 0000 0014 
+                 ; 0000 0015 PORTD = 0; //оба выхода в нижний уровень
+000056 e0e0      	LDI  R30,LOW(0)
+000057 b9eb      	OUT  0xB,R30
+                 ; 0000 0016 PORTD = ~portbuf; //меняем состояние выводовна противоположное тому, что было
+000058 2de4      	MOV  R30,R4
+000059 95e0      	COM  R30
+00005a b9eb      	OUT  0xB,R30
+                 ; 0000 0017 portbuf = PORTD;  //запоминаем новое состояние буфера
+00005b b04b      	IN   R4,11
+                 ; 0000 0018 
+                 ; 0000 0019 }
+00005c 91e9      	LD   R30,Y+
+00005d bfef      	OUT  SREG,R30
+00005e 91e9      	LD   R30,Y+
+00005f 9518      	RETI
                  ; .FEND
                  ;
                  ;void main(void){
-                 ; 0000 0018 void main(void){
+                 ; 0000 001B void main(void){
                  _main:
                  ; .FSTART _main
-                 ; 0000 0019   PORTD=0;
-000061 e0e0      	LDI  R30,LOW(0)
-000062 b9eb      	OUT  0xB,R30
-                 ; 0000 001A   DDRD.2=DDRD.3=1;
-000063 9a53      	SBI  0xA,3
-000064 9a52      	SBI  0xA,2
-                 ; 0000 001B   PORTD=0;
-000065 b9eb      	OUT  0xB,R30
-                 ; 0000 001C 
-                 ; 0000 001D   // Timer/Counter 0 initialization. Остальные регистры остаются по умолчанию - нулевые.
-                 ; 0000 001E   TCCR0B=(1<<CS00);
-000066 e0e1      	LDI  R30,LOW(1)
-000067 bde5      	OUT  0x25,R30
-                 ; 0000 001F   TCNT0=0xFE;
-000068 efee      	LDI  R30,LOW(254)
-000069 bde6      	OUT  0x26,R30
-                 ; 0000 0020 
-                 ; 0000 0021   PORTD.2=1; //первоначальное состояние
-00006a 9a5a      	SBI  0xB,2
-                 ; 0000 0022   portbuf = PORTD; //вносим состояние порта в буфер
-00006b b03b      	IN   R3,11
-00006c 2444      	CLR  R4
+                 ; 0000 001C   PORTD=0;
+000060 e0e0      	LDI  R30,LOW(0)
+000061 b9eb      	OUT  0xB,R30
+                 ; 0000 001D   DDRD.2=DDRD.3=1;
+000062 9a53      	SBI  0xA,3
+000063 9a52      	SBI  0xA,2
+                 ; 0000 001E   PORTD=0;
+000064 b9eb      	OUT  0xB,R30
+                 ; 0000 001F 
+                 ; 0000 0020   // Timer/Counter 0 initialization. Остальные регистры остаются по умолчанию - нулевые.
+                 ; 0000 0021   TCCR0B=(1<<CS00);
+000065 e0e1      	LDI  R30,LOW(1)
+000066 bde5      	OUT  0x25,R30
+                 ; 0000 0022   TCNT0=0xFE;
+000067 efee      	LDI  R30,LOW(254)
+000068 bde6      	OUT  0x26,R30
                  ; 0000 0023 
-                 ; 0000 0024   //Настройка прерывания по таймеру
-                 ; 0000 0025   TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
-00006d e0e1      	LDI  R30,LOW(1)
-00006e 93e0 006e 	STS  110,R30
+                 ; 0000 0024   PORTD.2=1; //первоначальное состояние
+000069 9a5a      	SBI  0xB,2
+                 ; 0000 0025   portbuf = PORTD; //вносим состояние порта в буфер
+00006a b04b      	IN   R4,11
                  ; 0000 0026 
-                 ; 0000 0027   // Global enable interrupts
-                 ; 0000 0028   #asm("sei")
-000070 9478      	sei
+                 ; 0000 0027   //Настройка прерывания по таймеру
+                 ; 0000 0028   TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
+00006b e0e1      	LDI  R30,LOW(1)
+00006c 93e0 006e 	STS  110,R30
                  ; 0000 0029 
-                 ; 0000 002A   while (1);
+                 ; 0000 002A   // Global enable interrupts
+                 ; 0000 002B   #asm("sei")
+00006e 9478      	sei
+                 ; 0000 002C 
+                 ; 0000 002D   while (1){};
                  _0x9:
-000071 cfff      	RJMP _0x9
-                 _0xB:
-                 ; 0000 002B 
-                 ; 0000 002C }
+00006f cfff      	RJMP _0x9
+                 ; 0000 002E 
+                 ; 0000 002F }
                  _0xC:
-000072 cfff      	RJMP _0xC
+000070 cfff      	RJMP _0xC
                  ; .FEND
                  
                  	.CSEG
@@ -1310,12 +1308,12 @@ counted separately from r26..r31 here.
 .dseg memory usage only counts static data declared with .byte
 
 ATmega328P register use summary:
-r0 :   0 r1 :   0 r2 :   0 r3 :   3 r4 :   2 r5 :   0 r6 :   0 r7 :   0 
+r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   3 r5 :   0 r6 :   0 r7 :   0 
 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 r13:   0 r14:   0 r15:   0 
 r16:   0 r17:   0 r18:   0 r19:   0 r20:   0 r21:   0 r22:   0 r23:   0 
 r24:   4 r25:   1 r26:   2 r27:   2 r28:   1 r29:   1 r30:  33 r31:   2 
 x  :   2 y  :   4 z  :   0 
-Registers used: 12 out of 35 (34.3%)
+Registers used: 11 out of 35 (31.4%)
 
 ATmega328P instruction use summary:
 .lds  :   0 .lds.l:   0 .sts  :   0 .sts.l:   0 adc   :   0 add   :   0 
@@ -1325,7 +1323,7 @@ brge  :   0 brhc  :   0 brhs  :   0 brid  :   0 brie  :   0 brlo  :   0
 brlt  :   0 brmi  :   0 brne  :   2 brpl  :   0 brsh  :   0 brtc  :   0 
 brts  :   0 brvc  :   0 brvs  :   0 bset  :   0 bst   :   0 call  :   0 
 cbi   :   0 cbr   :   0 clc   :   0 clh   :   0 cli   :   1 cln   :   0 
-clr   :   4 cls   :   0 clt   :   0 clv   :   0 clz   :   0 com   :   1 
+clr   :   2 cls   :   0 clt   :   0 clv   :   0 clz   :   0 com   :   1 
 cp    :   0 cpc   :   0 cpi   :   0 cpse  :   0 dec   :   1 des   :   0 
 eor   :   0 fmul  :   0 fmuls :   0 fmulsu:   0 icall :   0 ijmp  :   0 
 in    :   3 inc   :   0 jmp   :  27 ld    :   2 ldd   :   0 ldi   :  18 
@@ -1343,8 +1341,8 @@ Instructions used: 18 out of 116 (15.5%)
 ATmega328P memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x0000e6    230      0    230   32768   0.7%
+[.cseg] 0x000000 0x0000e2    226      0    226   32768   0.7%
 [.dseg] 0x000100 0x000300      0      0      0    2048   0.0%
 [.eseg] 0x000000 0x000000      0      0      0    1024   0.0%
 
-Assembly complete, 0 errors, 2 warnings
+Assembly complete, 0 errors, 1 warnings

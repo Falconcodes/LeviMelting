@@ -1087,8 +1087,7 @@ __DELAY_USW_LOOP:
 	.ENDM
 
 ;NAME DEFINITIONS FOR GLOBAL VARIABLES ALLOCATED TO REGISTERS
-	.DEF _portbuf=R3
-	.DEF _portbuf_msb=R4
+	.DEF _portbuf=R4
 
 ;GPIOR0 INITIALIZATION VALUE
 	.EQU __GPIOR0_INIT=0x00
@@ -1203,11 +1202,12 @@ __CLEAR_SRAM:
 ;
 ;#define LED PORTB.5
 ;
-;int portbuf;
+;char portbuf;
+;
 ;
 ;// Timer 0 overflow interrupt service routine
 ;interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
-; 0000 0010 interrupt [17] void timer0_ovf_isr(void) {
+; 0000 0011 interrupt [17] void timer0_ovf_isr(void) {
 
 	.CSEG
 _timer0_ovf_isr:
@@ -1215,21 +1215,22 @@ _timer0_ovf_isr:
 	ST   -Y,R30
 	IN   R30,SREG
 	ST   -Y,R30
-; 0000 0011 PORTD = 0; //оба выхода в нижний уровень
+; 0000 0012 
+; 0000 0013 TCNT0 = 0xEE; // Reinitialize Timer 0 value
+	LDI  R30,LOW(238)
+	OUT  0x26,R30
+; 0000 0014 
+; 0000 0015 PORTD = 0; //оба выхода в нижний уровень
 	LDI  R30,LOW(0)
 	OUT  0xB,R30
-; 0000 0012 //вставить тут одиночные действия, если нужен перерыв. каждое действие добавляет примерно 100-120нс, без них перерыв 180 ...
-; 0000 0013 PORTD = ~portbuf; //меняем состояние выводовна противоположное тому, что было
-	MOV  R30,R3
+; 0000 0016 PORTD = ~portbuf; //меняем состояние выводовна противоположное тому, что было
+	MOV  R30,R4
 	COM  R30
 	OUT  0xB,R30
-; 0000 0014 TCNT0 = 0xFE; // Reinitialize Timer 0 value
-	LDI  R30,LOW(254)
-	OUT  0x26,R30
-; 0000 0015 portbuf = PORTD;  //запоминаем новое состояние буфера
-	IN   R3,11
-	CLR  R4
-; 0000 0016 }
+; 0000 0017 portbuf = PORTD;  //запоминаем новое состояние буфера
+	IN   R4,11
+; 0000 0018 
+; 0000 0019 }
 	LD   R30,Y+
 	OUT  SREG,R30
 	LD   R30,Y+
@@ -1237,47 +1238,45 @@ _timer0_ovf_isr:
 ; .FEND
 ;
 ;void main(void){
-; 0000 0018 void main(void){
+; 0000 001B void main(void){
 _main:
 ; .FSTART _main
-; 0000 0019   PORTD=0;
+; 0000 001C   PORTD=0;
 	LDI  R30,LOW(0)
 	OUT  0xB,R30
-; 0000 001A   DDRD.2=DDRD.3=1;
+; 0000 001D   DDRD.2=DDRD.3=1;
 	SBI  0xA,3
 	SBI  0xA,2
-; 0000 001B   PORTD=0;
+; 0000 001E   PORTD=0;
 	OUT  0xB,R30
-; 0000 001C 
-; 0000 001D   // Timer/Counter 0 initialization. Остальные регистры остаются по умолчанию - нулевые.
-; 0000 001E   TCCR0B=(1<<CS00);
+; 0000 001F 
+; 0000 0020   // Timer/Counter 0 initialization. Остальные регистры остаются по умолчанию - нулевые.
+; 0000 0021   TCCR0B=(1<<CS00);
 	LDI  R30,LOW(1)
 	OUT  0x25,R30
-; 0000 001F   TCNT0=0xFE;
+; 0000 0022   TCNT0=0xFE;
 	LDI  R30,LOW(254)
 	OUT  0x26,R30
-; 0000 0020 
-; 0000 0021   PORTD.2=1; //первоначальное состояние
-	SBI  0xB,2
-; 0000 0022   portbuf = PORTD; //вносим состояние порта в буфер
-	IN   R3,11
-	CLR  R4
 ; 0000 0023 
-; 0000 0024   //Настройка прерывания по таймеру
-; 0000 0025   TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
+; 0000 0024   PORTD.2=1; //первоначальное состояние
+	SBI  0xB,2
+; 0000 0025   portbuf = PORTD; //вносим состояние порта в буфер
+	IN   R4,11
+; 0000 0026 
+; 0000 0027   //Настройка прерывания по таймеру
+; 0000 0028   TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
 	LDI  R30,LOW(1)
 	STS  110,R30
-; 0000 0026 
-; 0000 0027   // Global enable interrupts
-; 0000 0028   #asm("sei")
-	sei
 ; 0000 0029 
-; 0000 002A   while (1);
+; 0000 002A   // Global enable interrupts
+; 0000 002B   #asm("sei")
+	sei
+; 0000 002C 
+; 0000 002D   while (1){};
 _0x9:
 	RJMP _0x9
-_0xB:
-; 0000 002B 
-; 0000 002C }
+; 0000 002E 
+; 0000 002F }
 _0xC:
 	RJMP _0xC
 ; .FEND
