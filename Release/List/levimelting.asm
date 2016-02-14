@@ -3,12 +3,12 @@
 ;(C) Copyright 1998-2014 Pavel Haiduc, HP InfoTech s.r.l.
 ;http://www.hpinfotech.com
 
-;Build configuration    : Debug
+;Build configuration    : Release
 ;Chip type              : ATmega328P
 ;Program type           : Application
 ;Clock frequency        : 16,000000 MHz
 ;Memory model           : Small
-;Optimize for           : Speed
+;Optimize for           : Size
 ;(s)printf features     : int, width
 ;(s)scanf features      : int, width
 ;External RAM size      : 0
@@ -1086,9 +1086,6 @@ __DELAY_USW_LOOP:
 	ADD  R31,R0
 	.ENDM
 
-;NAME DEFINITIONS FOR GLOBAL VARIABLES ALLOCATED TO REGISTERS
-	.DEF _portbuf=R4
-
 ;GPIOR0 INITIALIZATION VALUE
 	.EQU __GPIOR0_INIT=0x00
 
@@ -1115,7 +1112,7 @@ __START_OF_CODE:
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
-	JMP  _timer0_ovf_isr
+	JMP  0x00
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
@@ -1202,81 +1199,67 @@ __CLEAR_SRAM:
 ;
 ;#define LED PORTB.5
 ;
-;char portbuf;
 ;
-;
-;// Timer 0 overflow interrupt service routine
-;interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
-; 0000 0011 interrupt [17] void timer0_ovf_isr(void) {
-
-	.CSEG
-_timer0_ovf_isr:
-; .FSTART _timer0_ovf_isr
-	ST   -Y,R30
-; 0000 0012 
-; 0000 0013 TCNT0 = 0xFF; // Reinitialize Timer 0 value
-	LDI  R30,LOW(255)
-	OUT  0x26,R30
-; 0000 0014 //PORTD = 0; //оба выхода в нижний уровень
-; 0000 0015 //PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
-; 0000 0016 //portbuf = PORTD;  //запоминаем новое состо€ние буфера
-; 0000 0017 
-; 0000 0018 PORTD.2 = ~PORTD.2;
-	SBIS 0xB,2
-	RJMP _0x3
-	CBI  0xB,2
-	RJMP _0x4
-_0x3:
-	SBI  0xB,2
-_0x4:
-; 0000 0019 
-; 0000 001A }
-	LD   R30,Y+
-	RETI
-; .FEND
+;//interrupt [TIM0_COMPA] void timer0_compa_isr(void)
+;//{
+;////PORTD = 0; //оба выхода в нижний уровень
+;////PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
+;////portbuf = PORTD;  //запоминаем новое состо€ние буфера
+;//PORTD = ~PORTD;
+;//}
 ;
 ;void main(void){
-; 0000 001C void main(void){
+; 0000 0016 void main(void){
+
+	.CSEG
 _main:
 ; .FSTART _main
-; 0000 001D   PORTD=0;
-	LDI  R30,LOW(0)
-	OUT  0xB,R30
-; 0000 001E   DDRD.2=DDRD.3=1;
+; 0000 0017 
+; 0000 0018   DDRD.2=DDRD.3=1;
 	SBI  0xA,3
 	SBI  0xA,2
-; 0000 001F   PORTD=0;
-	OUT  0xB,R30
-; 0000 0020 
-; 0000 0021   // Timer/Counter 0 initialization. ќстальные регистры остаютс€ по умолчанию - нулевые.
-; 0000 0022   TCCR0B=(1<<CS00);
-	LDI  R30,LOW(1)
-	OUT  0x25,R30
-; 0000 0023   TCNT0=0xFE;
-	LDI  R30,LOW(254)
-	OUT  0x26,R30
-; 0000 0024 
-; 0000 0025   PORTD.2=1; //первоначальное состо€ние
-	SBI  0xB,2
-; 0000 0026   portbuf = PORTD; //вносим состо€ние порта в буфер
-	IN   R4,11
-; 0000 0027 
-; 0000 0028   //Ќастройка прерывани€ по таймеру
-; 0000 0029   TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
-	LDI  R30,LOW(1)
-	STS  110,R30
-; 0000 002A 
-; 0000 002B   // Global enable interrupts
-; 0000 002C   #asm("sei")
-	sei
+; 0000 0019 
+; 0000 001A /*
+; 0000 001B //  TCCR0A=(1<<WGM01);
+; 0000 001C //  TCCR0B=(1<<CS00);
+; 0000 001D //  OCR0A=0x20;
+; 0000 001E 
+; 0000 001F 
+; 0000 0020 //  //Ќастройка прерывани€ по таймеру
+; 0000 0021 //  TIMSK0=(1<<OCIE0A);
+; 0000 0022 
+; 0000 0023 //  PORTD.2=1; //первоначальное состо€ние
+; 0000 0024 //  portbuf = PORTD; //вносим состо€ние порта в буфер
+; 0000 0025 */
+; 0000 0026 
+; 0000 0027   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+	LDI  R30,LOW(35)
+	STS  176,R30
+; 0000 0028   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+	LDI  R30,LOW(9)
+	STS  177,R30
+; 0000 0029   TCNT2=0x00;
+	LDI  R30,LOW(0)
+	STS  178,R30
+; 0000 002A   OCR2A=0x4F;
+	LDI  R30,LOW(79)
+	STS  179,R30
+; 0000 002B   OCR2B=0xF;
+	LDI  R30,LOW(15)
+	STS  180,R30
+; 0000 002C 
 ; 0000 002D 
-; 0000 002E   while (1){};
-_0xB:
-	RJMP _0xB
-; 0000 002F 
-; 0000 0030 }
-_0xE:
-	RJMP _0xE
+; 0000 002E   // Global enable interrupts
+; 0000 002F   #asm("sei")
+	sei
+; 0000 0030 
+; 0000 0031   while (1){};
+_0x7:
+	RJMP _0x7
+; 0000 0032 
+; 0000 0033 }
+_0xA:
+	RJMP _0xA
 ; .FEND
 
 	.CSEG

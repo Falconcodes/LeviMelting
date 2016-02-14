@@ -10,38 +10,42 @@
 
 #define LED PORTB.5
 
-char portbuf;
 
-
-// Timer 0 overflow interrupt service routine
-interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
-
-TCNT0 = 0xEE; // Reinitialize Timer 0 value
-
-PORTD = 0; //оба выхода в нижний уровень
-PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
-portbuf = PORTD;  //запоминаем новое состо€ние буфера
-
-}
+//interrupt [TIM0_COMPA] void timer0_compa_isr(void)
+//{
+////PORTD = 0; //оба выхода в нижний уровень
+////PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
+////portbuf = PORTD;  //запоминаем новое состо€ние буфера
+//PORTD = ~PORTD;
+//}
 
 void main(void){
-  PORTD=0;
+  
   DDRD.2=DDRD.3=1;
-  PORTD=0;  
   
-  // Timer/Counter 0 initialization. ќстальные регистры остаютс€ по умолчанию - нулевые.
-  TCCR0B=(1<<CS00);
-  TCNT0=0xFE; 
-    
-  PORTD.2=1; //первоначальное состо€ние
-  portbuf = PORTD; //вносим состо€ние порта в буфер
-  
-  //Ќастройка прерывани€ по таймеру
-  TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
+/*  
+//  TCCR0A=(1<<WGM01);
+//  TCCR0B=(1<<CS00);
+//  OCR0A=0x20;
 
+  
+//  //Ќастройка прерывани€ по таймеру
+//  TIMSK0=(1<<OCIE0A);
+  
+//  PORTD.2=1; //первоначальное состо€ние
+//  portbuf = PORTD; //вносим состо€ние порта в буфер
+*/
+
+  TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+  TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+  TCNT2=0x00;
+  OCR2A=0x4F;   //общий период
+  OCR2B=0xF;    //врем€ высокого уровн€
+  
+  
   // Global enable interrupts
   #asm("sei")
-  
+      
   while (1){};
 
 }

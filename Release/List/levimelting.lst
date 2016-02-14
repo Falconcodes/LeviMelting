@@ -1,19 +1,18 @@
 
-AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Debug\List\levimelting.asm Fri Feb 12 22:48:05 2016
+AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Release\List\levimelting.asm Mon Feb 15 00:29:19 2016
 
-D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r4 already defined by the .DEF directive
                  
                  
                  ;CodeVisionAVR C Compiler V3.12 Advanced
                  ;(C) Copyright 1998-2014 Pavel Haiduc, HP InfoTech s.r.l.
                  ;http://www.hpinfotech.com
                  
-                 ;Build configuration    : Debug
+                 ;Build configuration    : Release
                  ;Chip type              : ATmega328P
                  ;Program type           : Application
                  ;Clock frequency        : 16,000000 MHz
                  ;Memory model           : Small
-                 ;Optimize for           : Speed
+                 ;Optimize for           : Size
                  ;(s)printf features     : int, width
                  ;(s)scanf features      : int, width
                  ;External RAM size      : 0
@@ -1091,9 +1090,6 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r4 alr
                  	ADD  R31,R0
                  	.ENDM
                  
-                 ;NAME DEFINITIONS FOR GLOBAL VARIABLES ALLOCATED TO REGISTERS
-                 	.DEF _portbuf=R4
-                 
                  ;GPIOR0 INITIALIZATION VALUE
                  	.EQU __GPIOR0_INIT=0x00
                  
@@ -1120,7 +1116,7 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r4 alr
 00001a 940c 0000 	JMP  0x00
 00001c 940c 0000 	JMP  0x00
 00001e 940c 0000 	JMP  0x00
-000020 940c 0051 	JMP  _timer0_ovf_isr
+000020 940c 0000 	JMP  0x00
 000022 940c 0000 	JMP  0x00
 000024 940c 0000 	JMP  0x00
 000026 940c 0000 	JMP  0x00
@@ -1175,7 +1171,7 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r4 alr
 00004d e0c0      	LDI  R28,LOW(__SRAM_START+__DSTACK_SIZE)
 00004e e0d3      	LDI  R29,HIGH(__SRAM_START+__DSTACK_SIZE)
                  
-00004f 940c 005b 	JMP  _main
+00004f 940c 0051 	JMP  _main
                  
                  	.ESEG
                  	.ORG 0
@@ -1207,81 +1203,67 @@ D:\GitHub\LeviMelting\Debug\List\levimelting.asm(1090): warning: Register r4 alr
                  ;
                  ;#define LED PORTB.5
                  ;
-                 ;char portbuf;
                  ;
-                 ;
-                 ;// Timer 0 overflow interrupt service routine
-                 ;interrupt [TIM0_OVF] void timer0_ovf_isr(void) {
-                 ; 0000 0011 interrupt [17] void timer0_ovf_isr(void) {
-                 
-                 	.CSEG
-                 _timer0_ovf_isr:
-                 ; .FSTART _timer0_ovf_isr
-000051 93ea      	ST   -Y,R30
-                 ; 0000 0012 
-                 ; 0000 0013 TCNT0 = 0xFF; // Reinitialize Timer 0 value
-000052 efef      	LDI  R30,LOW(255)
-000053 bde6      	OUT  0x26,R30
-                 ; 0000 0014 //PORTD = 0; //оба выхода в нижний уровень
-                 ; 0000 0015 //PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
-                 ; 0000 0016 //portbuf = PORTD;  //запоминаем новое состо€ние буфера
-                 ; 0000 0017 
-                 ; 0000 0018 PORTD.2 = ~PORTD.2;
-000054 9b5a      	SBIS 0xB,2
-000055 c002      	RJMP _0x3
-000056 985a      	CBI  0xB,2
-000057 c001      	RJMP _0x4
-                 _0x3:
-000058 9a5a      	SBI  0xB,2
-                 _0x4:
-                 ; 0000 0019 
-                 ; 0000 001A }
-000059 91e9      	LD   R30,Y+
-00005a 9518      	RETI
-                 ; .FEND
+                 ;//interrupt [TIM0_COMPA] void timer0_compa_isr(void)
+                 ;//{
+                 ;////PORTD = 0; //оба выхода в нижний уровень
+                 ;////PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
+                 ;////portbuf = PORTD;  //запоминаем новое состо€ние буфера
+                 ;//PORTD = ~PORTD;
+                 ;//}
                  ;
                  ;void main(void){
-                 ; 0000 001C void main(void){
+                 ; 0000 0016 void main(void){
+                 
+                 	.CSEG
                  _main:
                  ; .FSTART _main
-                 ; 0000 001D   PORTD=0;
-00005b e0e0      	LDI  R30,LOW(0)
-00005c b9eb      	OUT  0xB,R30
-                 ; 0000 001E   DDRD.2=DDRD.3=1;
-00005d 9a53      	SBI  0xA,3
-00005e 9a52      	SBI  0xA,2
-                 ; 0000 001F   PORTD=0;
-00005f b9eb      	OUT  0xB,R30
-                 ; 0000 0020 
-                 ; 0000 0021   // Timer/Counter 0 initialization. ќстальные регистры остаютс€ по умолчанию - нулевые.
-                 ; 0000 0022   TCCR0B=(1<<CS00);
-000060 e0e1      	LDI  R30,LOW(1)
-000061 bde5      	OUT  0x25,R30
-                 ; 0000 0023   TCNT0=0xFE;
-000062 efee      	LDI  R30,LOW(254)
-000063 bde6      	OUT  0x26,R30
-                 ; 0000 0024 
-                 ; 0000 0025   PORTD.2=1; //первоначальное состо€ние
-000064 9a5a      	SBI  0xB,2
-                 ; 0000 0026   portbuf = PORTD; //вносим состо€ние порта в буфер
-000065 b04b      	IN   R4,11
-                 ; 0000 0027 
-                 ; 0000 0028   //Ќастройка прерывани€ по таймеру
-                 ; 0000 0029   TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
-000066 e0e1      	LDI  R30,LOW(1)
-000067 93e0 006e 	STS  110,R30
-                 ; 0000 002A 
-                 ; 0000 002B   // Global enable interrupts
-                 ; 0000 002C   #asm("sei")
-000069 9478      	sei
+                 ; 0000 0017 
+                 ; 0000 0018   DDRD.2=DDRD.3=1;
+000051 9a53      	SBI  0xA,3
+000052 9a52      	SBI  0xA,2
+                 ; 0000 0019 
+                 ; 0000 001A /*
+                 ; 0000 001B //  TCCR0A=(1<<WGM01);
+                 ; 0000 001C //  TCCR0B=(1<<CS00);
+                 ; 0000 001D //  OCR0A=0x20;
+                 ; 0000 001E 
+                 ; 0000 001F 
+                 ; 0000 0020 //  //Ќастройка прерывани€ по таймеру
+                 ; 0000 0021 //  TIMSK0=(1<<OCIE0A);
+                 ; 0000 0022 
+                 ; 0000 0023 //  PORTD.2=1; //первоначальное состо€ние
+                 ; 0000 0024 //  portbuf = PORTD; //вносим состо€ние порта в буфер
+                 ; 0000 0025 */
+                 ; 0000 0026 
+                 ; 0000 0027   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+000053 e2e3      	LDI  R30,LOW(35)
+000054 93e0 00b0 	STS  176,R30
+                 ; 0000 0028   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+000056 e0e9      	LDI  R30,LOW(9)
+000057 93e0 00b1 	STS  177,R30
+                 ; 0000 0029   TCNT2=0x00;
+000059 e0e0      	LDI  R30,LOW(0)
+00005a 93e0 00b2 	STS  178,R30
+                 ; 0000 002A   OCR2A=0x4F;
+00005c e4ef      	LDI  R30,LOW(79)
+00005d 93e0 00b3 	STS  179,R30
+                 ; 0000 002B   OCR2B=0xF;
+00005f e0ef      	LDI  R30,LOW(15)
+000060 93e0 00b4 	STS  180,R30
+                 ; 0000 002C 
                  ; 0000 002D 
-                 ; 0000 002E   while (1){};
-                 _0xB:
-00006a cfff      	RJMP _0xB
-                 ; 0000 002F 
-                 ; 0000 0030 }
-                 _0xE:
-00006b cfff      	RJMP _0xE
+                 ; 0000 002E   // Global enable interrupts
+                 ; 0000 002F   #asm("sei")
+000062 9478      	sei
+                 ; 0000 0030 
+                 ; 0000 0031   while (1){};
+                 _0x7:
+000063 cfff      	RJMP _0x7
+                 ; 0000 0032 
+                 ; 0000 0033 }
+                 _0xA:
+000064 cfff      	RJMP _0xA
                  ; .FEND
                  
                  	.CSEG
@@ -1306,12 +1288,12 @@ counted separately from r26..r31 here.
 .dseg memory usage only counts static data declared with .byte
 
 ATmega328P register use summary:
-r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   1 r5 :   0 r6 :   0 r7 :   0 
+r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   0 r5 :   0 r6 :   0 r7 :   0 
 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 r13:   0 r14:   0 r15:   0 
 r16:   0 r17:   0 r18:   0 r19:   0 r20:   0 r21:   0 r22:   0 r23:   0 
-r24:   4 r25:   1 r26:   2 r27:   2 r28:   1 r29:   1 r30:  24 r31:   2 
-x  :   2 y  :   2 z  :   0 
-Registers used: 11 out of 35 (31.4%)
+r24:   4 r25:   1 r26:   2 r27:   2 r28:   1 r29:   1 r30:  21 r31:   2 
+x  :   2 y  :   0 z  :   0 
+Registers used: 9 out of 35 (25.7%)
 
 ATmega328P instruction use summary:
 .lds  :   0 .lds.l:   0 .sts  :   0 .sts.l:   0 adc   :   0 add   :   0 
@@ -1320,27 +1302,27 @@ brbc  :   0 brbs  :   0 brcc  :   0 brcs  :   0 break :   0 breq  :   0
 brge  :   0 brhc  :   0 brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 
 brlt  :   0 brmi  :   0 brne  :   2 brpl  :   0 brsh  :   0 brtc  :   0 
 brts  :   0 brvc  :   0 brvs  :   0 bset  :   0 bst   :   0 call  :   0 
-cbi   :   1 cbr   :   0 clc   :   0 clh   :   0 cli   :   1 cln   :   0 
+cbi   :   0 cbr   :   0 clc   :   0 clh   :   0 cli   :   1 cln   :   0 
 clr   :   2 cls   :   0 clt   :   0 clv   :   0 clz   :   0 com   :   0 
 cp    :   0 cpc   :   0 cpi   :   0 cpse  :   0 dec   :   1 des   :   0 
 eor   :   0 fmul  :   0 fmuls :   0 fmulsu:   0 icall :   0 ijmp  :   0 
-in    :   1 inc   :   0 jmp   :  27 ld    :   1 ldd   :   0 ldi   :  17 
+in    :   0 inc   :   0 jmp   :  27 ld    :   0 ldd   :   0 ldi   :  17 
 lds   :   0 lpm   :   0 lsl   :   0 lsr   :   0 mov   :   0 movw  :   0 
 mul   :   0 muls  :   0 mulsu :   0 neg   :   0 nop   :   0 or    :   0 
-ori   :   0 out   :  11 pop   :   0 push  :   0 rcall :   0 ret   :   0 
-reti  :   1 rjmp  :   4 rol   :   0 ror   :   0 sbc   :   0 sbci  :   0 
-sbi   :   4 sbic  :   0 sbis  :   1 sbiw  :   1 sbr   :   0 sbrc  :   0 
+ori   :   0 out   :   6 pop   :   0 push  :   0 rcall :   0 ret   :   0 
+reti  :   0 rjmp  :   2 rol   :   0 ror   :   0 sbc   :   0 sbci  :   0 
+sbi   :   2 sbic  :   0 sbis  :   0 sbiw  :   1 sbr   :   0 sbrc  :   0 
 sbrs  :   0 sec   :   0 seh   :   0 sei   :   1 sen   :   0 ser   :   0 
 ses   :   0 set   :   0 sev   :   0 sez   :   0 sleep :   0 spm   :   0 
-st    :   3 std   :   0 sts   :   1 sub   :   0 subi  :   0 swap  :   0 
+st    :   2 std   :   0 sts   :   5 sub   :   0 subi  :   0 swap  :   0 
 tst   :   0 wdr   :   0 
-Instructions used: 18 out of 116 (15.5%)
+Instructions used: 13 out of 116 (11.2%)
 
 ATmega328P memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x0000d8    216      0    216   32768   0.7%
+[.cseg] 0x000000 0x0000ca    202      0    202   32768   0.6%
 [.dseg] 0x000100 0x000300      0      0      0    2048   0.0%
 [.eseg] 0x000000 0x000000      0      0      0    1024   0.0%
 
-Assembly complete, 0 errors, 1 warnings
+Assembly complete, 0 errors, 0 warnings

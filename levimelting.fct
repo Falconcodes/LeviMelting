@@ -1,2 +1,1 @@
-main DSTACK_USAGE:0 DSTACK_LEVEL:0 FILE:"levimelting.c" LINE:27
-timer0_ovf_isr DSTACK_USAGE:2 DSTACK_LEVEL:2 FILE:"levimelting.c" LINE:17
+main DSTACK_USAGE:0 DSTACK_LEVEL:0 FILE:"levimelting.c" LINE:22
