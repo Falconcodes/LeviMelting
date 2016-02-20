@@ -6,7 +6,7 @@
 ;Build configuration    : Release
 ;Chip type              : ATmega328P
 ;Program type           : Application
-;Clock frequency        : 16,000000 MHz
+;Clock frequency        : 8,000000 MHz
 ;Memory model           : Small
 ;Optimize for           : Size
 ;(s)printf features     : int, width
@@ -1101,7 +1101,7 @@ __START_OF_CODE:
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
-	JMP  0x00
+	JMP  _pin_change_isr2
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
@@ -1199,67 +1199,139 @@ __CLEAR_SRAM:
 ;
 ;#define LED PORTB.5
 ;
-;
-;//interrupt [TIM0_COMPA] void timer0_compa_isr(void)
-;//{
-;////PORTD = 0; //оба выхода в нижний уровень
-;////PORTD = ~portbuf; //мен€ем состо€ние выводовна противоположное тому, что было
-;////portbuf = PORTD;  //запоминаем новое состо€ние буфера
-;//PORTD = ~PORTD;
-;//}
+;// Pin change 16-23 interrupt service routine
+;interrupt [PC_INT2] void pin_change_isr2(void)
+; 0000 000F {
+
+	.CSEG
+_pin_change_isr2:
+; .FSTART _pin_change_isr2
+	ST   -Y,R24
+	ST   -Y,R25
+	ST   -Y,R26
+	ST   -Y,R27
+	ST   -Y,R30
+	IN   R30,SREG
+	ST   -Y,R30
+; 0000 0010 PCMSK2=0;
+	LDI  R30,LOW(0)
+	STS  109,R30
+; 0000 0011 if (PIND.5) {if(OCR2B>0) OCR2B--;}
+	SBIS 0x9,5
+	RJMP _0x3
+	LDS  R26,180
+	CPI  R26,LOW(0x1)
+	BRLO _0x4
+	LDI  R26,LOW(180)
+	LDI  R27,HIGH(180)
+	LD   R30,X
+	SUBI R30,LOW(1)
+	ST   X,R30
+_0x4:
+; 0000 0012 else {if(OCR2B<200) OCR2B++;}
+	RJMP _0x5
+_0x3:
+	LDS  R26,180
+	CPI  R26,LOW(0xC8)
+	BRSH _0x6
+	LDI  R26,LOW(180)
+	LDI  R27,HIGH(180)
+	LD   R30,X
+	SUBI R30,-LOW(1)
+	ST   X,R30
+_0x6:
+_0x5:
+; 0000 0013 delay_us(200);
+	__DELAY_USW 400
+; 0000 0014 }
+	LD   R30,Y+
+	OUT  SREG,R30
+	LD   R30,Y+
+	LD   R27,Y+
+	LD   R26,Y+
+	LD   R25,Y+
+	LD   R24,Y+
+	RETI
+; .FEND
 ;
 ;void main(void){
 ; 0000 0016 void main(void){
-
-	.CSEG
 _main:
 ; .FSTART _main
-; 0000 0017 
-; 0000 0018   DDRD.2=DDRD.3=1;
+; 0000 0017   int i=1;
+; 0000 0018 
+; 0000 0019   DDRD.2=DDRD.3=1;
+;	i -> R16,R17
+	__GETWRN 16,17,1
 	SBI  0xA,3
 	SBI  0xA,2
-; 0000 0019 
-; 0000 001A /*
-; 0000 001B //  TCCR0A=(1<<WGM01);
-; 0000 001C //  TCCR0B=(1<<CS00);
-; 0000 001D //  OCR0A=0x20;
+; 0000 001A   DDRB.5=1;
+	SBI  0x4,5
+; 0000 001B 
+; 0000 001C   DDRD.4=DDRD.5=0;
+	CBI  0xA,5
+	CBI  0xA,4
+; 0000 001D   PORTD.4=PORTD.5=1;
+	SBI  0xB,5
+	SBI  0xB,4
 ; 0000 001E 
-; 0000 001F 
-; 0000 0020 //  //Ќастройка прерывани€ по таймеру
-; 0000 0021 //  TIMSK0=(1<<OCIE0A);
-; 0000 0022 
-; 0000 0023 //  PORTD.2=1; //первоначальное состо€ние
-; 0000 0024 //  portbuf = PORTD; //вносим состо€ние порта в буфер
-; 0000 0025 */
-; 0000 0026 
-; 0000 0027   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+; 0000 001F /*
+; 0000 0020 //  TCCR0A=(1<<WGM01);
+; 0000 0021 //  TCCR0B=(1<<CS00);
+; 0000 0022 //  OCR0A=0x20;
+; 0000 0023 
+; 0000 0024 
+; 0000 0025 //  //Ќастройка прерывани€ по таймеру
+; 0000 0026 //  TIMSK0=(1<<OCIE0A);
+; 0000 0027 
+; 0000 0028 //  PORTD.2=1; //первоначальное состо€ние
+; 0000 0029 //  portbuf = PORTD; //вносим состо€ние порта в буфер
+; 0000 002A */
+; 0000 002B 
+; 0000 002C   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
 	LDI  R30,LOW(35)
 	STS  176,R30
-; 0000 0028   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+; 0000 002D   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
 	LDI  R30,LOW(9)
 	STS  177,R30
-; 0000 0029   TCNT2=0x00;
+; 0000 002E   TCNT2=0x00;
 	LDI  R30,LOW(0)
 	STS  178,R30
-; 0000 002A   OCR2A=0x4F;
-	LDI  R30,LOW(79)
+; 0000 002F   OCR2A=255;   //общий период
+	LDI  R30,LOW(255)
 	STS  179,R30
-; 0000 002B   OCR2B=0xF;
-	LDI  R30,LOW(15)
+; 0000 0030   OCR2B=100;    //врем€ высокого уровн€
+	LDI  R30,LOW(100)
 	STS  180,R30
-; 0000 002C 
-; 0000 002D 
-; 0000 002E   // Global enable interrupts
-; 0000 002F   #asm("sei")
+; 0000 0031 
+; 0000 0032   // Interrupt on any change on pins PCINT16-23: On
+; 0000 0033   PCICR=(1<<PCIE2);
+	LDI  R30,LOW(4)
+	STS  104,R30
+; 0000 0034   PCMSK2= (1<<PCINT20);
+	LDI  R30,LOW(16)
+	STS  109,R30
+; 0000 0035   PCIFR=(1<<PCIF2);
+	LDI  R30,LOW(4)
+	OUT  0x1B,R30
+; 0000 0036 
+; 0000 0037 
+; 0000 0038   while (1){
+_0x15:
+; 0000 0039   #asm("sei")
 	sei
-; 0000 0030 
-; 0000 0031   while (1){};
-_0x7:
-	RJMP _0x7
-; 0000 0032 
-; 0000 0033 }
-_0xA:
-	RJMP _0xA
+; 0000 003A   PCMSK2=(1<<PCINT20);
+	LDI  R30,LOW(16)
+	STS  109,R30
+; 0000 003B   //OCR2B=50;
+; 0000 003C     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
+; 0000 003D 
+; 0000 003E     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
+; 0000 003F   }
+	RJMP _0x15
+; 0000 0040 }
+_0x18:
+	RJMP _0x18
 ; .FEND
 
 	.CSEG

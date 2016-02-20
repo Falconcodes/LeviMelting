@@ -13,4 +13,5 @@ Variable                                                                        
 FLASH Allocation [words]
 Function                                                                          Address   Size
 ------------------------------------------------------------------------------------------------
-main                                                                              0x00051     20
+pin_change_isr2                                                                   0x00051     43
+main                                                                              0x0007C     38
