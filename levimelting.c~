@@ -13,10 +13,14 @@
 // Pin change 16-23 interrupt service routine
 interrupt [PC_INT2] void pin_change_isr2(void)
 {
-#asm("cli")
-if (PIND.5) {if(OCR2B>0) OCR2B--;}
-else {if(OCR2B<200) OCR2B++;}
-delay_us(200);
+//PCMSK2=0;
+
+ if (!PIND.4) {
+  if (PIND.5) {if(OCR2B>0) OCR2B--;}
+  else {if(OCR2B<255) OCR2B++;}
+  delay_us(800);
+ }
+ while( (!PIND.4) || (!PIND.5) );
 }
 
 void main(void){
@@ -45,17 +49,17 @@ void main(void){
   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
   TCNT2=0x00;
   OCR2A=255;   //общий период
-  OCR2B=100;    //время высокого уровня
+  OCR2B=10;    //время высокого уровня
   
   // Interrupt on any change on pins PCINT16-23: On
   PCICR=(1<<PCIE2);
   PCMSK2= (1<<PCINT20);
   PCIFR=(1<<PCIF2);
   
-  #asm("sei")
-      
+        
   while (1){
   #asm("sei") 
+  //PCMSK2=(1<<PCINT20);
   //OCR2B=50;
     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
     
