@@ -1101,7 +1101,7 @@ __START_OF_CODE:
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
-	JMP  _pin_change_isr2
+	JMP  0x00
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
@@ -1199,150 +1199,88 @@ __CLEAR_SRAM:
 ;
 ;#define LED PORTB.5
 ;
+;/*
+;//прерывание для энкодера
 ;// Pin change 16-23 interrupt service routine
 ;interrupt [PC_INT2] void pin_change_isr2(void)
-; 0000 000F {
-
-	.CSEG
-_pin_change_isr2:
-; .FSTART _pin_change_isr2
-	ST   -Y,R24
-	ST   -Y,R25
-	ST   -Y,R26
-	ST   -Y,R27
-	ST   -Y,R30
-	IN   R30,SREG
-	ST   -Y,R30
-; 0000 0010 //PCMSK2=0;
-; 0000 0011 
-; 0000 0012  if (!PIND.4) {
-	SBIC 0x9,4
-	RJMP _0x3
-; 0000 0013   if (PIND.5) {if(OCR2B>0) OCR2B--;}
-	SBIS 0x9,5
-	RJMP _0x4
-	LDS  R26,180
-	CPI  R26,LOW(0x1)
-	BRLO _0x5
-	LDI  R26,LOW(180)
-	LDI  R27,HIGH(180)
-	LD   R30,X
-	SUBI R30,LOW(1)
-	ST   X,R30
-_0x5:
-; 0000 0014   else {if(OCR2B<255) OCR2B++;}
-	RJMP _0x6
-_0x4:
-	LDS  R26,180
-	CPI  R26,LOW(0xFF)
-	BRSH _0x7
-	LDI  R26,LOW(180)
-	LDI  R27,HIGH(180)
-	LD   R30,X
-	SUBI R30,-LOW(1)
-	ST   X,R30
-_0x7:
-_0x6:
-; 0000 0015   delay_us(800);
-	__DELAY_USW 1600
-; 0000 0016  }
-; 0000 0017  while( (!PIND.4) || (!PIND.5) );
-_0x3:
-_0x8:
-	SBIS 0x9,4
-	RJMP _0xB
-	SBIC 0x9,5
-	RJMP _0xA
-_0xB:
-	RJMP _0x8
-_0xA:
-; 0000 0018 }
-	LD   R30,Y+
-	OUT  SREG,R30
-	LD   R30,Y+
-	LD   R27,Y+
-	LD   R26,Y+
-	LD   R25,Y+
-	LD   R24,Y+
-	RETI
-; .FEND
+;{
+;//PCMSK2=0;
+;
+; if (!PIND.4) {
+;  if (PIND.5) {if(OCR2B>0) OCR2B--;}
+;  else {if(OCR2B<255) OCR2B++;}
+;  delay_us(800);
+; }
+; while( (!PIND.4) || (!PIND.5) );
+;}
+;*/
 ;
 ;void main(void){
-; 0000 001A void main(void){
+; 0000 001D void main(void){
+
+	.CSEG
 _main:
 ; .FSTART _main
-; 0000 001B   int i=1;
-; 0000 001C 
-; 0000 001D   DDRD.2=DDRD.3=1;
+; 0000 001E   int i=1;
+; 0000 001F 
+; 0000 0020   DDRD.2=DDRD.3=1;
 ;	i -> R16,R17
 	__GETWRN 16,17,1
 	SBI  0xA,3
 	SBI  0xA,2
-; 0000 001E   DDRB.5=1;
+; 0000 0021   DDRB.5=1;
 	SBI  0x4,5
-; 0000 001F 
-; 0000 0020   DDRD.4=DDRD.5=0;
+; 0000 0022 
+; 0000 0023   DDRD.4=DDRD.5=0;
 	CBI  0xA,5
 	CBI  0xA,4
-; 0000 0021   PORTD.4=PORTD.5=1;
+; 0000 0024   PORTD.4=PORTD.5=1;
 	SBI  0xB,5
 	SBI  0xB,4
-; 0000 0022 
-; 0000 0023 /*
-; 0000 0024 //  TCCR0A=(1<<WGM01);
-; 0000 0025 //  TCCR0B=(1<<CS00);
-; 0000 0026 //  OCR0A=0x20;
-; 0000 0027 
-; 0000 0028 
-; 0000 0029 //  //Настройка прерывания по таймеру
-; 0000 002A //  TIMSK0=(1<<OCIE0A);
-; 0000 002B 
-; 0000 002C //  PORTD.2=1; //первоначальное состояние
-; 0000 002D //  portbuf = PORTD; //вносим состояние порта в буфер
-; 0000 002E */
-; 0000 002F 
-; 0000 0030   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+; 0000 0025 
+; 0000 0026   //таймер, уравляющий ШИМ
+; 0000 0027   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
 	LDI  R30,LOW(35)
 	STS  176,R30
-; 0000 0031   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+; 0000 0028   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
 	LDI  R30,LOW(9)
 	STS  177,R30
-; 0000 0032   TCNT2=0x00;
+; 0000 0029   TCNT2=0x00;
 	LDI  R30,LOW(0)
 	STS  178,R30
-; 0000 0033   OCR2A=255;   //общий период
+; 0000 002A   OCR2A=255;   //общий период
 	LDI  R30,LOW(255)
 	STS  179,R30
-; 0000 0034   OCR2B=20;    //время высокого уровня
+; 0000 002B   OCR2B=20;    //время высокого уровня
 	LDI  R30,LOW(20)
 	STS  180,R30
-; 0000 0035 
-; 0000 0036   // Interrupt on any change on pins PCINT16-23: On
-; 0000 0037   PCICR=(1<<PCIE2);
+; 0000 002C 
+; 0000 002D   // Настройка Прерывания для энкодера
+; 0000 002E   PCICR=(1<<PCIE2);
 	LDI  R30,LOW(4)
 	STS  104,R30
-; 0000 0038   PCMSK2= (1<<PCINT20);
+; 0000 002F   PCMSK2=(1<<PCINT20);
 	LDI  R30,LOW(16)
 	STS  109,R30
-; 0000 0039   PCIFR=(1<<PCIF2);
+; 0000 0030   PCIFR=(1<<PCIF2);
 	LDI  R30,LOW(4)
 	OUT  0x1B,R30
-; 0000 003A 
-; 0000 003B 
-; 0000 003C   while (1){
-_0x1B:
-; 0000 003D   #asm("sei")
+; 0000 0031 
+; 0000 0032 
+; 0000 0033   while (1){
+_0x11:
+; 0000 0034   #asm("sei")
 	sei
-; 0000 003E   //PCMSK2=(1<<PCINT20);
-; 0000 003F   //OCR2B=50;
-; 0000 0040     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
-; 0000 0041 
-; 0000 0042     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
-; 0000 0043   }
-	RJMP _0x1B
-; 0000 0044 }
-_0x1E:
-	RJMP _0x1E
+; 0000 0035   //PCMSK2=(1<<PCINT20);
+; 0000 0036   //OCR2B=50;
+; 0000 0037     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
+; 0000 0038 
+; 0000 0039     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
+; 0000 003A   }
+	RJMP _0x11
+; 0000 003B }
+_0x14:
+	RJMP _0x14
 ; .FEND
 
 	.CSEG

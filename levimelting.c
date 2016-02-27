@@ -10,6 +10,8 @@
 
 #define LED PORTB.5
 
+/*
+//прерывание для энкодера
 // Pin change 16-23 interrupt service routine
 interrupt [PC_INT2] void pin_change_isr2(void)
 {
@@ -22,6 +24,14 @@ interrupt [PC_INT2] void pin_change_isr2(void)
  }
  while( (!PIND.4) || (!PIND.5) );
 }
+*/
+
+// Analog Comparator interrupt service routine
+interrupt [ANA_COMP] void ana_comp_isr(void){
+PORTB.0=1;
+delay_us(2);
+PORTB.0=0;
+}
 
 void main(void){
   int i=1;
@@ -32,30 +42,28 @@ void main(void){
   DDRD.4=DDRD.5=0;
   PORTD.4=PORTD.5=1;
   
-/*  
-//  TCCR0A=(1<<WGM01);
-//  TCCR0B=(1<<CS00);
-//  OCR0A=0x20;
-
+  DDRB.0=1;
+  PORTB.0=0;
   
-//  //Настройка прерывания по таймеру
-//  TIMSK0=(1<<OCIE0A);
-  
-//  PORTD.2=1; //первоначальное состояние
-//  portbuf = PORTD; //вносим состояние порта в буфер
-*/
-
+  //таймер, уравляющий ШИМ
   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
   TCNT2=0x00;
   OCR2A=255;   //общий период
   OCR2B=20;    //время высокого уровня
   
-  // Interrupt on any change on pins PCINT16-23: On
+  // Настройка Прерывания для энкодера
   PCICR=(1<<PCIE2);
-  PCMSK2= (1<<PCINT20);
+  PCMSK2=(1<<PCINT20);
   PCIFR=(1<<PCIF2);
   
+  // Analog Comparator initialization
+  // Interrupt on Rising Output Edge
+  ACSR=(0<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (1<<ACIE) | (0<<ACIC) | (1<<ACIS1) | (1<<ACIS0);
+  ADCSRB=(0<<ACME);
+  // Digital input buffer on AIN0: Off
+  // Digital input buffer on AIN1: Off
+  DIDR1=(1<<AIN0D) | (1<<AIN1D);
         
   while (1){
   #asm("sei") 
