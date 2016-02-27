@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Release\List\levimelting.asm Sun Feb 28 01:05:07 2016
+AVRASM ver. 2.1.30  D:\Embed\LeviMelting\Release\List\levimelting.asm Sun Feb 28 01:44:15 2016
 
                  
                  
@@ -1123,7 +1123,7 @@ AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Release\List\levimelting.asm Sun Feb 2
 000028 940c 0000 	JMP  0x00
 00002a 940c 0000 	JMP  0x00
 00002c 940c 0000 	JMP  0x00
-00002e 940c 0000 	JMP  0x00
+00002e 940c 0051 	JMP  _ana_comp_isr
 000030 940c 0000 	JMP  0x00
 000032 940c 0000 	JMP  0x00
                  
@@ -1171,7 +1171,7 @@ AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Release\List\levimelting.asm Sun Feb 2
 00004d e0c0      	LDI  R28,LOW(__SRAM_START+__DSTACK_SIZE)
 00004e e0d3      	LDI  R29,HIGH(__SRAM_START+__DSTACK_SIZE)
                  
-00004f 940c 0051 	JMP  _main
+00004f 940c 005d 	JMP  _main
                  
                  	.ESEG
                  	.ORG 0
@@ -1219,75 +1219,119 @@ AVRASM ver. 2.1.30  D:\GitHub\LeviMelting\Release\List\levimelting.asm Sun Feb 2
                  ;}
                  ;*/
                  ;
-                 ;void main(void){
-                 ; 0000 001D void main(void){
+                 ;// Analog Comparator interrupt service routine
+                 ;interrupt [ANA_COMP] void ana_comp_isr(void){
+                 ; 0000 001E interrupt [24] void ana_comp_isr(void){
                  
                  	.CSEG
+                 _ana_comp_isr:
+                 ; .FSTART _ana_comp_isr
+000051 938a      	ST   -Y,R24
+000052 93ea      	ST   -Y,R30
+000053 b7ef      	IN   R30,SREG
+                 ; 0000 001F PORTB.0=1;
+000054 9a28      	SBI  0x5,0
+                 ; 0000 0020 delay_us(1);
+                +
+000055 e083     +LDI R24 , LOW ( 3 )
+                +__DELAY_USB_LOOP :
+000056 958a     +DEC R24
+000057 f7f1     +BRNE __DELAY_USB_LOOP
+                 	__DELAY_USB 3
+                 ; 0000 0021 PORTB.0=0;
+000058 9828      	CBI  0x5,0
+                 ; 0000 0022 }
+000059 bfef      	OUT  SREG,R30
+00005a 91e9      	LD   R30,Y+
+00005b 9189      	LD   R24,Y+
+00005c 9518      	RETI
+                 ; .FEND
+                 ;
+                 ;void main(void){
+                 ; 0000 0024 void main(void){
                  _main:
                  ; .FSTART _main
-                 ; 0000 001E   int i=1;
-                 ; 0000 001F 
-                 ; 0000 0020   DDRD.2=DDRD.3=1;
+                 ; 0000 0025   int i=1;
+                 ; 0000 0026 
+                 ; 0000 0027   DDRD.2=DDRD.3=1;
                  ;	i -> R16,R17
                 +
-000051 e001     +LDI R16 , LOW ( 1 )
-000052 e010     +LDI R17 , HIGH ( 1 )
+00005d e001     +LDI R16 , LOW ( 1 )
+00005e e010     +LDI R17 , HIGH ( 1 )
                  	__GETWRN 16,17,1
-000053 9a53      	SBI  0xA,3
-000054 9a52      	SBI  0xA,2
-                 ; 0000 0021   DDRB.5=1;
-000055 9a25      	SBI  0x4,5
-                 ; 0000 0022 
-                 ; 0000 0023   DDRD.4=DDRD.5=0;
-000056 9855      	CBI  0xA,5
-000057 9854      	CBI  0xA,4
-                 ; 0000 0024   PORTD.4=PORTD.5=1;
-000058 9a5d      	SBI  0xB,5
-000059 9a5c      	SBI  0xB,4
-                 ; 0000 0025 
-                 ; 0000 0026   //таймер, уравляющий ШИМ
-                 ; 0000 0027   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
-00005a e2e3      	LDI  R30,LOW(35)
-00005b 93e0 00b0 	STS  176,R30
-                 ; 0000 0028   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
-00005d e0e9      	LDI  R30,LOW(9)
-00005e 93e0 00b1 	STS  177,R30
-                 ; 0000 0029   TCNT2=0x00;
-000060 e0e0      	LDI  R30,LOW(0)
-000061 93e0 00b2 	STS  178,R30
-                 ; 0000 002A   OCR2A=255;   //общий период
-000063 efef      	LDI  R30,LOW(255)
-000064 93e0 00b3 	STS  179,R30
-                 ; 0000 002B   OCR2B=20;    //время высокого уровня
-000066 e1e4      	LDI  R30,LOW(20)
-000067 93e0 00b4 	STS  180,R30
+00005f 9a53      	SBI  0xA,3
+000060 9a52      	SBI  0xA,2
+                 ; 0000 0028   DDRB.5=1;
+000061 9a25      	SBI  0x4,5
+                 ; 0000 0029 
+                 ; 0000 002A   DDRD.4=DDRD.5=0;
+000062 9855      	CBI  0xA,5
+000063 9854      	CBI  0xA,4
+                 ; 0000 002B   PORTD.4=PORTD.5=1;
+000064 9a5d      	SBI  0xB,5
+000065 9a5c      	SBI  0xB,4
                  ; 0000 002C 
-                 ; 0000 002D   // Настройка Прерывания для энкодера
-                 ; 0000 002E   PCICR=(1<<PCIE2);
-000069 e0e4      	LDI  R30,LOW(4)
-00006a 93e0 0068 	STS  104,R30
-                 ; 0000 002F   PCMSK2=(1<<PCINT20);
-00006c e1e0      	LDI  R30,LOW(16)
-00006d 93e0 006d 	STS  109,R30
-                 ; 0000 0030   PCIFR=(1<<PCIF2);
-00006f e0e4      	LDI  R30,LOW(4)
-000070 bbeb      	OUT  0x1B,R30
-                 ; 0000 0031 
-                 ; 0000 0032 
-                 ; 0000 0033   while (1){
-                 _0x11:
-                 ; 0000 0034   #asm("sei")
-000071 9478      	sei
-                 ; 0000 0035   //PCMSK2=(1<<PCINT20);
-                 ; 0000 0036   //OCR2B=50;
-                 ; 0000 0037     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
-                 ; 0000 0038 
-                 ; 0000 0039     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
-                 ; 0000 003A   }
-000072 cffe      	RJMP _0x11
-                 ; 0000 003B }
-                 _0x14:
-000073 cfff      	RJMP _0x14
+                 ; 0000 002D   DDRB.0=1;
+000066 9a20      	SBI  0x4,0
+                 ; 0000 002E   PORTB.0=0;
+000067 9828      	CBI  0x5,0
+                 ; 0000 002F 
+                 ; 0000 0030   //таймер, уравляющий ШИМ
+                 ; 0000 0031   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+000068 e2e3      	LDI  R30,LOW(35)
+000069 93e0 00b0 	STS  176,R30
+                 ; 0000 0032   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+00006b e0e9      	LDI  R30,LOW(9)
+00006c 93e0 00b1 	STS  177,R30
+                 ; 0000 0033   TCNT2=0x00;
+00006e e0e0      	LDI  R30,LOW(0)
+00006f 93e0 00b2 	STS  178,R30
+                 ; 0000 0034   OCR2A=255;   //общий период
+000071 efef      	LDI  R30,LOW(255)
+000072 93e0 00b3 	STS  179,R30
+                 ; 0000 0035   OCR2B=20;    //время высокого уровня
+000074 e1e4      	LDI  R30,LOW(20)
+000075 93e0 00b4 	STS  180,R30
+                 ; 0000 0036 
+                 ; 0000 0037   // Настройка Прерывания для энкодера
+                 ; 0000 0038   PCICR=(1<<PCIE2);
+000077 e0e4      	LDI  R30,LOW(4)
+000078 93e0 0068 	STS  104,R30
+                 ; 0000 0039   PCMSK2=(1<<PCINT20);
+00007a e1e0      	LDI  R30,LOW(16)
+00007b 93e0 006d 	STS  109,R30
+                 ; 0000 003A   PCIFR=(1<<PCIF2);
+00007d e0e4      	LDI  R30,LOW(4)
+00007e bbeb      	OUT  0x1B,R30
+                 ; 0000 003B 
+                 ; 0000 003C   // Analog Comparator initialization
+                 ; 0000 003D   // Interrupt on Rising Output Edge
+                 ; 0000 003E   ACSR=(0<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (1<<ACIE) | (0<<ACIC) | (1<<ACIS1) | (1<<ACIS0);
+00007f e0eb      	LDI  R30,LOW(11)
+000080 bfe0      	OUT  0x30,R30
+                 ; 0000 003F   ADCSRB=(0<<ACME);
+000081 e0e0      	LDI  R30,LOW(0)
+000082 93e0 007b 	STS  123,R30
+                 ; 0000 0040   // Digital input buffer on AIN0: Off
+                 ; 0000 0041   // Digital input buffer on AIN1: Off
+                 ; 0000 0042   DIDR1=(1<<AIN0D) | (1<<AIN1D);
+000084 e0e3      	LDI  R30,LOW(3)
+000085 93e0 007f 	STS  127,R30
+                 ; 0000 0043 
+                 ; 0000 0044   while (1){
+                 _0x19:
+                 ; 0000 0045   #asm("sei")
+000087 9478      	sei
+                 ; 0000 0046   //PCMSK2=(1<<PCINT20);
+                 ; 0000 0047   //OCR2B=50;
+                 ; 0000 0048     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
+                 ; 0000 0049 
+                 ; 0000 004A     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
+                 ; 0000 004B   }
+000088 cffe      	RJMP _0x19
+                 ; 0000 004C }
+                 _0x1C:
+000089 cfff      	RJMP _0x1C
                  ; .FEND
                  
                  	.CSEG
@@ -1315,37 +1359,37 @@ ATmega328P register use summary:
 r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   0 r5 :   0 r6 :   0 r7 :   0 
 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 r13:   0 r14:   0 r15:   0 
 r16:   1 r17:   1 r18:   0 r19:   0 r20:   0 r21:   0 r22:   0 r23:   0 
-r24:   4 r25:   1 r26:   2 r27:   2 r28:   1 r29:   1 r30:  27 r31:   2 
-x  :   2 y  :   0 z  :   0 
-Registers used: 11 out of 35 (31.4%)
+r24:   8 r25:   1 r26:   2 r27:   2 r28:   1 r29:   1 r30:  37 r31:   2 
+x  :   2 y  :   4 z  :   0 
+Registers used: 12 out of 35 (34.3%)
 
 ATmega328P instruction use summary:
 .lds  :   0 .lds.l:   0 .sts  :   0 .sts.l:   0 adc   :   0 add   :   0 
 adiw  :   0 and   :   0 andi  :   0 asr   :   0 bclr  :   0 bld   :   0 
 brbc  :   0 brbs  :   0 brcc  :   0 brcs  :   0 break :   0 breq  :   0 
 brge  :   0 brhc  :   0 brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 
-brlt  :   0 brmi  :   0 brne  :   2 brpl  :   0 brsh  :   0 brtc  :   0 
+brlt  :   0 brmi  :   0 brne  :   3 brpl  :   0 brsh  :   0 brtc  :   0 
 brts  :   0 brvc  :   0 brvs  :   0 bset  :   0 bst   :   0 call  :   0 
-cbi   :   2 cbr   :   0 clc   :   0 clh   :   0 cli   :   1 cln   :   0 
+cbi   :   4 cbr   :   0 clc   :   0 clh   :   0 cli   :   1 cln   :   0 
 clr   :   2 cls   :   0 clt   :   0 clv   :   0 clz   :   0 com   :   0 
-cp    :   0 cpc   :   0 cpi   :   0 cpse  :   0 dec   :   1 des   :   0 
+cp    :   0 cpc   :   0 cpi   :   0 cpse  :   0 dec   :   2 des   :   0 
 eor   :   0 fmul  :   0 fmuls :   0 fmulsu:   0 icall :   0 ijmp  :   0 
-in    :   0 inc   :   0 jmp   :  27 ld    :   0 ldd   :   0 ldi   :  22 
+in    :   1 inc   :   0 jmp   :  27 ld    :   2 ldd   :   0 ldi   :  26 
 lds   :   0 lpm   :   0 lsl   :   0 lsr   :   0 mov   :   0 movw  :   0 
 mul   :   0 muls  :   0 mulsu :   0 neg   :   0 nop   :   0 or    :   0 
-ori   :   0 out   :   7 pop   :   0 push  :   0 rcall :   0 ret   :   0 
-reti  :   0 rjmp  :   2 rol   :   0 ror   :   0 sbc   :   0 sbci  :   0 
-sbi   :   5 sbic  :   0 sbis  :   0 sbiw  :   1 sbr   :   0 sbrc  :   0 
+ori   :   0 out   :   9 pop   :   0 push  :   0 rcall :   0 ret   :   0 
+reti  :   1 rjmp  :   2 rol   :   0 ror   :   0 sbc   :   0 sbci  :   0 
+sbi   :   7 sbic  :   0 sbis  :   0 sbiw  :   1 sbr   :   0 sbrc  :   0 
 sbrs  :   0 sec   :   0 seh   :   0 sei   :   1 sen   :   0 ser   :   0 
 ses   :   0 set   :   0 sev   :   0 sez   :   0 sleep :   0 spm   :   0 
-st    :   2 std   :   0 sts   :   7 sub   :   0 subi  :   0 swap  :   0 
+st    :   4 std   :   0 sts   :   9 sub   :   0 subi  :   0 swap  :   0 
 tst   :   0 wdr   :   0 
-Instructions used: 14 out of 116 (12.1%)
+Instructions used: 17 out of 116 (14.7%)
 
 ATmega328P memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x0000e8    232      0    232   32768   0.7%
+[.cseg] 0x000000 0x000114    276      0    276   32768   0.8%
 [.dseg] 0x000100 0x000300      0      0      0    2048   0.0%
 [.eseg] 0x000000 0x000000      0      0      0    1024   0.0%
 

@@ -1119,7 +1119,7 @@ __START_OF_CODE:
 	JMP  0x00
 	JMP  0x00
 	JMP  0x00
-	JMP  0x00
+	JMP  _ana_comp_isr
 	JMP  0x00
 	JMP  0x00
 
@@ -1215,72 +1215,111 @@ __CLEAR_SRAM:
 ;}
 ;*/
 ;
-;void main(void){
-; 0000 001D void main(void){
+;// Analog Comparator interrupt service routine
+;interrupt [ANA_COMP] void ana_comp_isr(void){
+; 0000 001E interrupt [24] void ana_comp_isr(void){
 
 	.CSEG
+_ana_comp_isr:
+; .FSTART _ana_comp_isr
+	ST   -Y,R24
+	ST   -Y,R30
+	IN   R30,SREG
+; 0000 001F PORTB.0=1;
+	SBI  0x5,0
+; 0000 0020 delay_us(1);
+	__DELAY_USB 3
+; 0000 0021 PORTB.0=0;
+	CBI  0x5,0
+; 0000 0022 }
+	OUT  SREG,R30
+	LD   R30,Y+
+	LD   R24,Y+
+	RETI
+; .FEND
+;
+;void main(void){
+; 0000 0024 void main(void){
 _main:
 ; .FSTART _main
-; 0000 001E   int i=1;
-; 0000 001F 
-; 0000 0020   DDRD.2=DDRD.3=1;
+; 0000 0025   int i=1;
+; 0000 0026 
+; 0000 0027   DDRD.2=DDRD.3=1;
 ;	i -> R16,R17
 	__GETWRN 16,17,1
 	SBI  0xA,3
 	SBI  0xA,2
-; 0000 0021   DDRB.5=1;
+; 0000 0028   DDRB.5=1;
 	SBI  0x4,5
-; 0000 0022 
-; 0000 0023   DDRD.4=DDRD.5=0;
+; 0000 0029 
+; 0000 002A   DDRD.4=DDRD.5=0;
 	CBI  0xA,5
 	CBI  0xA,4
-; 0000 0024   PORTD.4=PORTD.5=1;
+; 0000 002B   PORTD.4=PORTD.5=1;
 	SBI  0xB,5
 	SBI  0xB,4
-; 0000 0025 
-; 0000 0026   //таймер, уравляющий ШИМ
-; 0000 0027   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+; 0000 002C 
+; 0000 002D   DDRB.0=1;
+	SBI  0x4,0
+; 0000 002E   PORTB.0=0;
+	CBI  0x5,0
+; 0000 002F 
+; 0000 0030   //таймер, уравляющий ШИМ
+; 0000 0031   TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
 	LDI  R30,LOW(35)
 	STS  176,R30
-; 0000 0028   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
+; 0000 0032   TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
 	LDI  R30,LOW(9)
 	STS  177,R30
-; 0000 0029   TCNT2=0x00;
+; 0000 0033   TCNT2=0x00;
 	LDI  R30,LOW(0)
 	STS  178,R30
-; 0000 002A   OCR2A=255;   //общий период
+; 0000 0034   OCR2A=255;   //общий период
 	LDI  R30,LOW(255)
 	STS  179,R30
-; 0000 002B   OCR2B=20;    //время высокого уровня
+; 0000 0035   OCR2B=20;    //время высокого уровня
 	LDI  R30,LOW(20)
 	STS  180,R30
-; 0000 002C 
-; 0000 002D   // Настройка Прерывания для энкодера
-; 0000 002E   PCICR=(1<<PCIE2);
+; 0000 0036 
+; 0000 0037   // Настройка Прерывания для энкодера
+; 0000 0038   PCICR=(1<<PCIE2);
 	LDI  R30,LOW(4)
 	STS  104,R30
-; 0000 002F   PCMSK2=(1<<PCINT20);
+; 0000 0039   PCMSK2=(1<<PCINT20);
 	LDI  R30,LOW(16)
 	STS  109,R30
-; 0000 0030   PCIFR=(1<<PCIF2);
+; 0000 003A   PCIFR=(1<<PCIF2);
 	LDI  R30,LOW(4)
 	OUT  0x1B,R30
-; 0000 0031 
-; 0000 0032 
-; 0000 0033   while (1){
-_0x11:
-; 0000 0034   #asm("sei")
+; 0000 003B 
+; 0000 003C   // Analog Comparator initialization
+; 0000 003D   // Interrupt on Rising Output Edge
+; 0000 003E   ACSR=(0<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (1<<ACIE) | (0<<ACIC) | (1<<ACIS1) | (1<<ACIS0);
+	LDI  R30,LOW(11)
+	OUT  0x30,R30
+; 0000 003F   ADCSRB=(0<<ACME);
+	LDI  R30,LOW(0)
+	STS  123,R30
+; 0000 0040   // Digital input buffer on AIN0: Off
+; 0000 0041   // Digital input buffer on AIN1: Off
+; 0000 0042   DIDR1=(1<<AIN0D) | (1<<AIN1D);
+	LDI  R30,LOW(3)
+	STS  127,R30
+; 0000 0043 
+; 0000 0044   while (1){
+_0x19:
+; 0000 0045   #asm("sei")
 	sei
-; 0000 0035   //PCMSK2=(1<<PCINT20);
-; 0000 0036   //OCR2B=50;
-; 0000 0037     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
-; 0000 0038 
-; 0000 0039     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
-; 0000 003A   }
-	RJMP _0x11
-; 0000 003B }
-_0x14:
-	RJMP _0x14
+; 0000 0046   //PCMSK2=(1<<PCINT20);
+; 0000 0047   //OCR2B=50;
+; 0000 0048     //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
+; 0000 0049 
+; 0000 004A     //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
+; 0000 004B   }
+	RJMP _0x19
+; 0000 004C }
+_0x1C:
+	RJMP _0x1C
 ; .FEND
 
 	.CSEG

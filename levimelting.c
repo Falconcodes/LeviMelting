@@ -29,7 +29,7 @@ interrupt [PC_INT2] void pin_change_isr2(void)
 // Analog Comparator interrupt service routine
 interrupt [ANA_COMP] void ana_comp_isr(void){
 PORTB.0=1;
-delay_us(2);
+delay_us(1);
 PORTB.0=0;
 }
 
