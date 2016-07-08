@@ -47,3 +47,12 @@ Temporary Items
 .apdisk
 *.prj
 *.prj
+*.c~
+levimelting.c~
+*.cof
+*.cci
+Release/Exe/levimelting.hex
+*.hex
+*.prj~
+*.fct
+*.c~

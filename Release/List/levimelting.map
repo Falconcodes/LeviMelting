@@ -1,6 +1,8 @@
 RAM Allocation [bytes]
 Variable                                                                          Address   Size
 ------------------------------------------------------------------------------------------------
+__ds18b20_scratch_pad                                                             0x0300       9
+rom_code                                                                          0x0309      18
 
 EEPROM Allocation [bytes]
 Variable                                                                          Address   Size
@@ -9,9 +11,38 @@ Variable                                                                        
 Register Allocation
 Variable                                                                          Register  Size
 ------------------------------------------------------------------------------------------------
+tok                                                                               R3,R4        2
+tok_old                                                                           R5,R6        2
+errors                                                                            R8           1
 
 FLASH Allocation [words]
 Function                                                                          Address   Size
 ------------------------------------------------------------------------------------------------
-ana_comp_isr                                                                      0x00051     12
-main                                                                              0x0005D     45
+read_adc                                                                          0x00129     74
+main                                                                              0x00173    480
+ds18b20_select                                                                    0x00353     45
+ds18b20_read_spd                                                                  0x00380     51
+ds18b20_temperature                                                               0x003B3     89
+ds18b20_init                                                                      0x0040C     88
+putchar                                                                           0x00464     13
+put_usart_G101                                                                    0x00471     14
+_print_G101                                                                       0x0047F    563
+printf                                                                            0x006B2     38
+strlen                                                                            0x006D8     12
+strlenf                                                                           0x006E4     13
+
+FLASH Allocation [words]
+Function                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+read_adc                                                                          0x00129     74
+main                                                                              0x00173    480
+ds18b20_select                                                                    0x00353     45
+ds18b20_read_spd                                                                  0x00380     51
+ds18b20_temperature                                                               0x003B3     89
+ds18b20_init                                                                      0x0040C     88
+putchar                                                                           0x00464     13
+put_usart_G101                                                                    0x00471     14
+_print_G101                                                                       0x0047F    563
+printf                                                                            0x006B2     38
+strlen                                                                            0x006D8     12
+strlenf                                                                           0x006E4     13

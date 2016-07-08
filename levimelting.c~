@@ -6,71 +6,246 @@
  */
 
 #include <io.h>
+
+#asm
+        .equ __w1_port=0xB
+        .equ __w1_bit=6
+#endasm
+    
+#include <ds18b20.h>
 #include <delay.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#define LED PORTB.5
+#define ADC_VREF_TYPE ((0<<REFS1) | (0<<REFS0) | (0<<ADLAR)) //настройка референса для АЦП
+#define TOK_KOEF 5
+#define LED PORTB.5  
+#define RELAY_CAP_ON  PORTD.5=0
+#define RELAY_CAP_OFF PORTD.5=1
+#define RELAY_PWR_ON  PORTD.4=0
+#define RELAY_PWR_OFF PORTD.4=1
+#define MAX_ERRORS 5 //число ошибок при автопрогреве, после которого уходит в защиту
+#define WARM_TIME 30 //секунд на прогрев
+#define MELT_TIME 90 //секунд на плавку
 
-/*
-//прерывание для энкодера
-// Pin change 16-23 interrupt service routine
-interrupt [PC_INT2] void pin_change_isr2(void)
-{
-//PCMSK2=0;
+// Read the AD conversion result
+unsigned int read_adc(unsigned char adc_input){
+  int i;
+  unsigned long adc_summ=0;
+  ADMUX=adc_input | (0<<REFS1) | (1<<REFS0) | (0<<ADLAR);
+  // Delay needed for the stabilization of the ADC input voltage
+  delay_us(10);
 
- if (!PIND.4) {
-  if (PIND.5) {if(OCR2B>0) OCR2B--;}
-  else {if(OCR2B<255) OCR2B++;}
-  delay_us(800);
- }
- while( (!PIND.4) || (!PIND.5) );
+   for (i=1; i<100; i++){
+    // Start the AD conversion
+    ADCSRA|=(1<<ADSC);
+    // Wait for the AD conversion to complete
+    while ((ADCSRA & (1<<ADIF))==0);
+    ADCSRA|=(1<<ADIF);
+    adc_summ+=ADCW;
+   }
+  return adc_summ/100;
 }
-*/
 
-// Analog Comparator interrupt service routine
-interrupt [ANA_COMP] void ana_comp_isr(void){
-PORTB.0=1;
-delay_us(2);
-PORTB.0=0;
-}
+unsigned int tok, tok_old;
+unsigned char errors;
+
+/* maximum number of DS18B20 connected to the 1 Wire bus */
+#define MAX_DEVICES 2
+
+/* DS18B20 devices ROM code storage area */
+unsigned char rom_code[MAX_DEVICES][9];
 
 void main(void){
-  int i=1;
+  unsigned int i=0, fet_temp, water_temp;
+  unsigned char j,devices;
   
-  DDRD.2=DDRD.3=1;
-  DDRB.5=1;
+  RELAY_CAP_OFF;
+  RELAY_PWR_OFF;
   
-  DDRD.4=DDRD.5=0;
-  PORTD.4=PORTD.5=1;
-  
-  DDRB.0=1;
+  DDRB.0=DDRB.3=DDRB.5=DDRD.2=DDRD.3=DDRD.4=DDRD.5=1;
   PORTB.0=0;
-  
-  //таймер, уравляющий ШИМ
-  TCCR2A=(0<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
-  TCCR2B=(1<<WGM22) | (0<<CS22) | (0<<CS21) | (1<<CS20);
-  TCNT2=0x00;
-  OCR2A=255;   //общий период
-  OCR2B=20;    //время высокого уровня
-  
-  // Настройка Прерывания для энкодера
-  PCICR=(1<<PCIE2);
-  PCMSK2=(1<<PCINT20);
-  PCIFR=(1<<PCIF2);
-  
-  // Analog Comparator initialization
-  // Interrupt on Rising Output Edge
-  ACSR=(0<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (1<<ACIE) | (0<<ACIC) | (1<<ACIS1) | (1<<ACIS0);
-  ADCSRB=(0<<ACME);
-  // Digital input buffer on AIN0: Off
-  // Digital input buffer on AIN1: Off
-  DIDR1=(1<<AIN0D) | (1<<AIN1D);
-        
-  while (1){
-  #asm("sei") 
-  //PCMSK2=(1<<PCINT20);
-  //OCR2B=50;
-    //for (OCR2B=0; OCR2B<180; OCR2B++) delay_ms(10);
+   
+  //таймер, управляющий ШИМ для водяного насоса и для подстройки частоты
+  TCCR2A=(1<<COM2A1) | (0<<COM2A0) | (1<<COM2B1) | (0<<COM2B0) | (1<<WGM21) | (1<<WGM20);
+  TCCR2B=(0<<WGM22) | (1<<CS22) | (1<<CS21) | (0<<CS20);
+  TCNT2=0;
+  OCR2B=0;    //период для частоты (больше = частота ниже)
+  OCR2A=50;   //период для насоса (больше = больше напор и громче работает)
     
-    //for (OCR2B=180; OCR2B>1; OCR2B--) delay_ms(10);
+  // ADC initialization 125,000 kHz  AVCC pin ADC Stopped
+  DIDR0=(1<<ADC5D) | (1<<ADC4D) | (1<<ADC3D) | (1<<ADC2D) | (1<<ADC1D) | (0<<ADC0D);
+  ADCSRA=(1<<ADEN) | (1<<ADPS2) | (1<<ADPS1) | (1<<ADPS0);
+  
+  // USART initialization 8 Data, 1 Stop, No Parity Asynchronous Baud Rate: 9600
+  UCSR0B=(1<<TXEN0);
+  UCSR0C=((1<<UCSZ01) | (1<<UCSZ00));
+  UBRR0L=0x67;
+  
+  OCR2B=0;
+                                              
+  printf("LOADING...");
+  
+  /*searching for ds18b20 sensors*/
+  devices=w1_search(0xf0,rom_code);
+  if (devices == 2) printf("Temp. control ready",devices);
+  else printf("Error: %u temp.sensor(s) not found",devices, (2-devices));
+  /* configure each DS18B20 device */
+  for (i=0;i<devices;)
+    if (!ds18b20_init(&rom_code[i++][0],20,30,DS18B20_9BIT_RES))
+       {
+       printf("Init error for device #%u",i);
+       while (1); /* stop here if init error */
+       };
+
+//  while (1)
+//      {
+//          printf(" t(FETs)=%i C",(int)ds18b20_temperature(&rom_code[1][0]));
+//          printf("t(Water)=%i C",(int)ds18b20_temperature(&rom_code[0][0]));
+//          delay_ms(1000);
+//      }; 
+     
+  for(i=0;i<3;i++){
+  delay_ms(500);
+  LED=1;
+  delay_ms(500);
+  LED=0;
   }
+  
+  RELAY_CAP_ON;
+     
+  printf("t(FETs)=  %i C",(int)ds18b20_temperature(&rom_code[0][0]));
+  printf("t(Water)= %i C",(int)ds18b20_temperature(&rom_code[1][0]));
+  
+  delay_ms(500);
+  
+  RELAY_PWR_ON;
+  
+  printf("WARM-UP IN PROGRESS...");
+
+ //===ЭТАП ПЕРВЫЙ. Прогрев пустого контура большим током      
+  #asm("sei")
+  while (i < (WARM_TIME*3)) { //ждем WARM_TIME секунд, пока прогреется
+  i++; 
+  tok=read_adc(0);
+  
+  //цикл, повышающий ток и понижающий частоту ближе к резонансу
+  while (tok>30 && tok<315 && OCR2B<110){  //ток больше минимального, т.е. питание силовой подано, и меньше требуемого
+   OCR2B++;
+   tok_old=tok;
+   tok=read_adc(0);
+   if (tok_old > tok)errors++; //считаем количество ошибок, когда изменение частоты приводит к изменению тока не в ту сторону (прошли через резонанс)
+   if (errors > MAX_ERRORS){   //и если ошибок слишком много - уходим в защиту
+    OCR2B=0;
+    printf("Error: Auto-Ajust Failed");
+    delay_ms(500);
+    RELAY_PWR_OFF;
+    while(1);
+   }
+  }
+  errors=0;
+  
+  //если ток превышает, повышаем частоту дальше от резонанса
+   while (tok>325 && OCR2B>=0) {
+   OCR2B--;
+   tok_old=tok;
+   tok=read_adc(0);
+   if (tok_old < tok) errors++; //считаем количество ошибок
+   if (errors > MAX_ERRORS){    //и если слишком много - уходим в защиту
+   OCR2B=0;
+   printf("Error: Auto-Ajust Failed");
+   delay_ms(500);
+   RELAY_PWR_OFF;
+   while(1); 
+   }
+  }
+  errors=0; 
+  
+  if (tok<30){
+  OCR2B=0; //если пропало силовое питание - выводим частоту на начальный уровень (максимум)
+  printf("Error: Supply Under-Voltage");
+  delay_ms(500);
+  RELAY_PWR_OFF;
+  while(1);
+  }
+  
+  //температурный контроль
+  fet_temp =   (int)ds18b20_temperature(&rom_code[0][0]);
+  water_temp = (int)ds18b20_temperature(&rom_code[1][0]);
+  
+  if (fet_temp > 60)
+  {
+    OCR2B=0; //завышаем частоту = занижаем ток
+    delay_ms(500); //ждем реакции
+    RELAY_PWR_OFF; //отрубаем питание силовой
+    printf("Error: FETs over-heat");
+  }
+  if (water_temp > 70)
+  {
+    OCR2B=0; //завышаем частоту = занижаем ток
+    delay_ms(500); //ждем реакции
+    RELAY_PWR_OFF; //отрубаем питание силовой
+    printf("Error: Cooling Water over-heat");
+  }
+  printf("temp: %iC(FETs), %iC(Water)", fet_temp, water_temp);
+ }
+ 
+ if ((OCR2B < 30) || (OCR2B > 200)){    //если прогрев прошел, но устойчивый OCR2B не попадает в диапазон, тоже отключаем - нужна ручная подстройка базовой частоты
+   OCR2B=0;
+   printf("Error: Need to manual ajustment");
+   delay_ms(500);
+   RELAY_PWR_OFF;
+   while(1); 
+   }
+ 
+ //---КОНЕЦ ПЕРВОГО ЭТАПА
+ 
+ printf("tok: %u, OCR2B: %u", tok, OCR2B);
+ 
+ delay_ms(50);
+ printf("WARM-UP SUCCESS");
+ 
+ //===ЭТАП ВТОРОЙ. Перестройка частоты под образец
+ //повышаем частоту (понижаем ток) с запасом, перед внесением образца
+   while (tok>240 && OCR2B>=0) {
+   OCR2B--;
+   tok=read_adc(0); 
+   }
+    
+  printf("Place sample into inductor in 10 seconds");
+  
+  i=0;
+  while(i < MELT_TIME)
+  {
+    i++;
+    
+    //температурный контроль
+    fet_temp =   (int)ds18b20_temperature(&rom_code[0][0]);
+    water_temp = (int)ds18b20_temperature(&rom_code[1][0]);
+    
+    if (fet_temp > 60)
+    {
+      OCR2B=0; //завышаем частоту = занижаем ток
+      delay_ms(500); //ждем реакции
+      RELAY_PWR_OFF; //отрубаем питание силовой
+      printf("Error: FETs over-heat");
+    }
+    if (water_temp > 70)
+    {
+      OCR2B=0; //завышаем частоту = занижаем ток
+      delay_ms(500); //ждем реакции
+      RELAY_PWR_OFF; //отрубаем питание силовой
+      printf("Error: Cooling Water over-heat");
+    }
+    printf("temp: %iC(FETs), %iC(Water)", fet_temp, water_temp);
+    delay_ms(700); //подбор этой паузы, чтобы MELT_TIME в условии цикла соответствовало секундам (чтобы весь цикл выполнялся за 1 секунду)
+  }
+  
+  //---КОНЕЦ ВТОРОГО ЭТАПА
+  
+  OCR2B=0;
+  printf("Melting overtime. Turn-Off.");
+  delay_ms(500);
+  RELAY_PWR_OFF;
 }
